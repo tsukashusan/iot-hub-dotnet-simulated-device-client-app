@@ -31,14 +31,29 @@
                     temperature = currentTemperature,
                     humidity = currentHumidity
                 };
-                var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
-                var message = new Message(Encoding.ASCII.GetBytes(messageString));
-                message.Properties.Add("temperatureAlert", (currentTemperature > 30) ? "true" : "false");
 
-                await _deviceClient.SendEventAsync(message);
-                Console.WriteLine("{0} > Sending message: {1}", DateTime.Now, messageString);
+                for(uint retryCount = 0; retryCount < 5; retryCount++) {
+                    try
+                    {
+                        var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
+                        var message = new Message(Encoding.ASCII.GetBytes(messageString));
+                        message.Properties.Add("temperatureAlert", (currentTemperature > 30) ? "true" : "false");
 
-                await Task.Delay(1000);
+                        var task = _deviceClient.SendEventAsync(message);
+                        await task;
+
+                        Console.WriteLine("{0} > Sending message: {1}", DateTime.Now, messageString);
+
+                        await Task.Delay(1000);
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("{0} > Exception: {1}", DateTime.Now, e.Message);
+                        Console.WriteLine("StackTrace\n {0}", e.StackTrace);
+                        await Task.Delay(500);
+                    }
+                }
             }
         }
 
@@ -46,7 +61,7 @@
         {
             Console.WriteLine("Simulated device\n");
             _deviceClient = DeviceClient.Create(IotHubUri, new DeviceAuthenticationWithRegistrySymmetricKey(DeviceId, DeviceKey), TransportType.Mqtt);
-
+            _deviceClient.RetryPolicy = RetryPolicyType.Exponential_Backoff_With_Jitter;
             SendDeviceToCloudMessagesAsync();
             Console.ReadLine();
         }
