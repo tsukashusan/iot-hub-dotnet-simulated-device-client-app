@@ -16,6 +16,7 @@
         private static readonly Random Rand = new Random();
         private static DeviceClient _deviceClient;
         private static int _messageId = 1;
+        private const uint RETRY_MAX = 5;
 
         private static async void SendDeviceToCloudMessagesAsync()
         {
@@ -32,7 +33,7 @@
                     humidity = currentHumidity
                 };
 
-                for(uint retryCount = 0; retryCount < 5; retryCount++) {
+                for(uint retryCount = 0; retryCount < RETRY_MAX; retryCount++) {
                     try
                     {
                         var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
